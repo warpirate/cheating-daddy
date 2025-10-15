@@ -141,6 +141,59 @@ export class MainView extends LitElement {
             width: 100%;
             max-width: 500px;
         }
+
+        .provider-selector {
+            margin-bottom: 16px;
+        }
+
+        .provider-selector label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--label-color);
+            margin-bottom: 6px;
+        }
+
+        .provider-selector select {
+            width: 100%;
+            background: var(--input-background);
+            color: var(--text-color);
+            border: 1px solid var(--button-border);
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 10px center;
+            background-repeat: no-repeat;
+            background-size: 16px;
+            padding-right: 36px;
+        }
+
+        .provider-selector select:focus {
+            outline: none;
+            border-color: var(--focus-border-color);
+            box-shadow: 0 0 0 3px var(--focus-box-shadow);
+        }
+
+        .provider-info {
+            font-size: 11px;
+            color: var(--description-color);
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+
+        .provider-warning {
+            background: rgba(255, 152, 0, 0.1);
+            border: 1px solid rgba(255, 152, 0, 0.3);
+            color: #ffb84d;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            margin-top: 8px;
+            line-height: 1.4;
+        }
     `;
 
     static properties = {
@@ -149,6 +202,7 @@ export class MainView extends LitElement {
         isInitializing: { type: Boolean },
         onLayoutModeChange: { type: Function },
         showApiKeyError: { type: Boolean },
+        selectedProvider: { type: String },
     };
 
     constructor() {
@@ -158,6 +212,7 @@ export class MainView extends LitElement {
         this.isInitializing = false;
         this.onLayoutModeChange = () => {};
         this.showApiKeyError = false;
+        this.selectedProvider = localStorage.getItem('llmProvider') || 'gemini';
         this.boundKeydownHandler = this.handleKeydown.bind(this);
     }
 
@@ -199,6 +254,33 @@ export class MainView extends LitElement {
         if (this.showApiKeyError) {
             this.showApiKeyError = false;
         }
+    }
+
+    handleProviderChange(e) {
+        this.selectedProvider = e.target.value;
+        localStorage.setItem('llmProvider', this.selectedProvider);
+        this.requestUpdate();
+    }
+
+    getProviderInfo() {
+        const providers = {
+            gemini: {
+                name: 'Google Gemini',
+                description: 'Real-time audio streaming + vision support. Best for live interviews.',
+                warning: null,
+            },
+            groq: {
+                name: 'Groq',
+                description: 'Ultra-fast inference with vision. Screenshots only (no audio streaming).',
+                warning: '⚠️ Audio streaming not supported. Only screenshots and text will be sent.',
+            },
+            openrouter: {
+                name: 'OpenRouter',
+                description: 'Access 100+ models (GPT-4, Claude, etc). Screenshots only.',
+                warning: '⚠️ Audio streaming not supported. Only screenshots and text will be sent.',
+            },
+        };
+        return providers[this.selectedProvider] || providers.gemini;
     }
 
     handleStartClick() {
@@ -282,13 +364,31 @@ export class MainView extends LitElement {
     }
 
     render() {
+        const providerInfo = this.getProviderInfo();
+        const apiKeyPlaceholder = this.selectedProvider === 'gemini' 
+            ? 'Enter your Gemini API Key'
+            : this.selectedProvider === 'groq'
+            ? 'Enter your Groq API Key'
+            : 'Enter your OpenRouter API Key';
+
         return html`
             <div class="welcome">Welcome</div>
+
+            <div class="provider-selector">
+                <label>AI Provider</label>
+                <select .value=${this.selectedProvider} @change=${this.handleProviderChange}>
+                    <option value="gemini">Google Gemini (Real-time Audio)</option>
+                    <option value="groq">Groq (Ultra-fast)</option>
+                    <option value="openrouter">OpenRouter (Multi-model)</option>
+                </select>
+                <div class="provider-info">${providerInfo.description}</div>
+                ${providerInfo.warning ? html`<div class="provider-warning">${providerInfo.warning}</div>` : ''}
+            </div>
 
             <div class="input-group">
                 <input
                     type="password"
-                    placeholder="Enter your Gemini API Key"
+                    placeholder="${apiKeyPlaceholder}"
                     .value=${localStorage.getItem('apiKey') || ''}
                     @input=${this.handleInput}
                     class="${this.showApiKeyError ? 'api-key-error' : ''}"

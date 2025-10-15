@@ -4,19 +4,19 @@ if (require('electron-squirrel-startup')) {
 
 const { app, BrowserWindow, shell, ipcMain } = require('electron');
 const { createWindow, updateGlobalShortcuts } = require('./utils/window');
-const { setupGeminiIpcHandlers, stopMacOSAudioCapture, sendToRenderer } = require('./utils/gemini');
+const { setupLLMIpcHandlers, stopMacOSAudioCapture, sendToRenderer } = require('./utils/llmProvider');
 const { initializeRandomProcessNames } = require('./utils/processRandomizer');
 const { applyAntiAnalysisMeasures } = require('./utils/stealthFeatures');
 const { getLocalConfig, writeConfig } = require('./config');
 
-const geminiSessionRef = { current: null };
+const llmProviderRef = { current: null, providerName: 'gemini' };
 let mainWindow = null;
 
 // Initialize random process names for stealth
 const randomNames = initializeRandomProcessNames();
 
 function createMainWindow() {
-    mainWindow = createWindow(sendToRenderer, geminiSessionRef, randomNames);
+    mainWindow = createWindow(sendToRenderer, llmProviderRef, randomNames);
     return mainWindow;
 }
 
@@ -25,7 +25,7 @@ app.whenReady().then(async () => {
     await applyAntiAnalysisMeasures();
 
     createMainWindow();
-    setupGeminiIpcHandlers(geminiSessionRef);
+    setupLLMIpcHandlers(llmProviderRef);
     setupGeneralIpcHandlers();
 });
 
@@ -127,7 +127,7 @@ function setupGeneralIpcHandlers() {
 
     ipcMain.on('update-keybinds', (event, newKeybinds) => {
         if (mainWindow) {
-            updateGlobalShortcuts(newKeybinds, mainWindow, sendToRenderer, geminiSessionRef);
+            updateGlobalShortcuts(newKeybinds, mainWindow, sendToRenderer, llmProviderRef);
         }
     });
 

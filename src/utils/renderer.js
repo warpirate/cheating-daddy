@@ -149,10 +149,12 @@ function arrayBufferToBase64(buffer) {
     return btoa(binary);
 }
 
-async function initializeGemini(profile = 'interview', language = 'en-US') {
+async function initializeLLM(profile = 'interview', language = 'en-US') {
     const apiKey = localStorage.getItem('apiKey')?.trim();
+    const providerName = localStorage.getItem('llmProvider') || 'gemini';
+    
     if (apiKey) {
-        const success = await ipcRenderer.invoke('initialize-gemini', apiKey, localStorage.getItem('customPrompt') || '', profile, language);
+        const success = await ipcRenderer.invoke('initialize-llm', providerName, apiKey, localStorage.getItem('customPrompt') || '', profile, language);
         if (success) {
             cheddar.setStatus('Live');
         } else {
@@ -160,6 +162,9 @@ async function initializeGemini(profile = 'interview', language = 'en-US') {
         }
     }
 }
+
+// Keep backward compatibility
+const initializeGemini = initializeLLM;
 
 // Listen for status updates
 ipcRenderer.on('update-status', (event, status) => {
@@ -763,7 +768,8 @@ const cheddar = {
     setResponse: response => cheatingDaddyApp.setResponse(response),
 
     // Core functionality
-    initializeGemini,
+    initializeGemini, // Backward compatibility
+    initializeLLM,
     startCapture,
     stopCapture,
     sendTextMessage,
