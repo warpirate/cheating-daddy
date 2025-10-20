@@ -343,11 +343,18 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
             videoTrack: mediaStream.getVideoTracks()[0]?.getSettings(),
         });
 
-        // Start capturing screenshots - check if manual mode
-        if (screenshotIntervalSeconds === 'manual' || screenshotIntervalSeconds === 'Manual') {
+        // Start capturing screenshots - check provider and mode
+        const providerName = localStorage.getItem('llmProvider') || 'gemini';
+        
+        // For Groq and OpenRouter, ONLY capture screenshots on manual trigger (CTRL+ENTER)
+        if (providerName === 'groq' || providerName === 'openrouter') {
+            console.log(`📸 ${providerName} provider: Screenshots will ONLY be captured on manual trigger (CTRL+ENTER)`);
+            // Don't start automatic capture for Groq/OpenRouter
+        } else if (screenshotIntervalSeconds === 'manual' || screenshotIntervalSeconds === 'Manual') {
             console.log('Manual mode enabled - screenshots will be captured on demand only');
             // Don't start automatic capture in manual mode
         } else {
+            // Gemini: Use automatic screenshot interval
             const intervalMilliseconds = parseInt(screenshotIntervalSeconds) * 1000;
             screenshotInterval = setInterval(() => captureScreenshot(imageQuality), intervalMilliseconds);
 
@@ -361,7 +368,16 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
 }
 
 function setupLinuxMicProcessing(micStream) {
-    // Setup microphone audio processing for Linux
+    const providerName = localStorage.getItem('llmProvider') || 'gemini';
+    
+    // For Groq and OpenRouter, use Web Speech API instead of raw audio
+    if (providerName === 'groq' || providerName === 'openrouter') {
+        console.log(`Using Web Speech API for ${providerName} provider`);
+        setupSpeechRecognition();
+        return;
+    }
+    
+    // For Gemini, use raw audio processing
     const micAudioContext = new AudioContext({ sampleRate: SAMPLE_RATE });
     const micSource = micAudioContext.createMediaStreamSource(micStream);
     const micProcessor = micAudioContext.createScriptProcessor(BUFFER_SIZE, 1, 1);
@@ -456,6 +472,13 @@ function setupWindowsLoopbackProcessing() {
 async function captureScreenshot(imageQuality = 'medium', isManual = false) {
     console.log(`Capturing ${isManual ? 'manual' : 'automated'} screenshot...`);
     if (!mediaStream) return;
+
+    // For Groq and OpenRouter, ONLY allow manual screenshots
+    const providerName = localStorage.getItem('llmProvider') || 'gemini';
+    if ((providerName === 'groq' || providerName === 'openrouter') && !isManual) {
+        console.log(`⚠️ Automated screenshot blocked for ${providerName} - use CTRL+ENTER to capture manually`);
+        return;
+    }
 
     // Check rate limiting for automated screenshots only
     if (!isManual && tokenTracker.shouldThrottle()) {
@@ -585,6 +608,9 @@ function stopCapture() {
         micAudioProcessor.disconnect();
         micAudioProcessor = null;
     }
+
+    // Stop speech recognition (for Groq/OpenRouter)
+    stopSpeechRecognition();
 
     if (audioContext) {
         audioContext.close();
@@ -793,3 +819,182 @@ const cheddar = {
 
 // Make it globally available
 window.cheddar = cheddar;
+
+
+// Speech Recognition for Groq and OpenRouter
+let speechRecognition = null;
+let speechRecognitionActive = false;
+
+function setupSpeechRecognition() {
+    const providerName = localStorage.getItem('llmProvider') || 'gemini';
+    
+    // Only setup for Groq and OpenRouter
+    if (providerName !== 'groq' && providerName !== 'openrouter') {
+        return;
+    }
+
+    // Check if Web Speech API is available
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+        console.error('Web Speech API not supported in this browser');
+        cheddar.setStatus('Speech recognition not supported');
+        return;
+    }
+
+    // Clean up existing recognition
+    if (speechRecognition) {
+        try {
+            speechRecognition.stop();
+        } catch (e) {
+            // Ignore
+        }
+        speechRecognition = null;
+    }
+
+    // Create new recognition instance
+    speechRecognition = new SpeechRecognition();
+    
+    // Configure recognition
+    speechRecognition.continuous = true; // Keep listening
+    speechRecognition.interimResults = true; // Get interim results
+    speechRecognition.lang = localStorage.getItem('selectedLanguage') || 'en-US';
+    speechRecognition.maxAlternatives = 1;
+
+    let finalTranscript = '';
+    let silenceTimer = null;
+    const SILENCE_THRESHOLD = 1500; // 1.5 seconds of silence
+
+    // Handle recognition start
+    speechRecognition.onstart = () => {
+        speechRecognitionActive = true;
+        console.log('🎤 Speech recognition started for', providerName);
+        cheddar.setStatus('Listening...');
+    };
+
+    // Handle recognition results
+    speechRecognition.onresult = (event) => {
+        let interimTranscript = '';
+        
+        // Process all results
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            
+            if (event.results[i].isFinal) {
+                finalTranscript += transcript + ' ';
+                
+                // Reset silence timer
+                if (silenceTimer) {
+                    clearTimeout(silenceTimer);
+                }
+                
+                // Start silence detection timer
+                silenceTimer = setTimeout(() => {
+                    sendTranscribedText();
+                }, SILENCE_THRESHOLD);
+                
+            } else {
+                interimTranscript += transcript;
+            }
+        }
+
+        // Show interim results in UI
+        if (interimTranscript || finalTranscript) {
+            const displayText = finalTranscript + interimTranscript;
+            console.log('🎤 Transcribing:', displayText);
+            cheddar.setStatus(`Listening: "${displayText.slice(-50)}..."`);
+        }
+    };
+
+    // Handle recognition errors
+    speechRecognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        
+        if (event.error === 'no-speech') {
+            // No speech detected, just continue
+            return;
+        }
+        
+        if (event.error === 'aborted') {
+            // Recognition was aborted, restart if still active
+            if (speechRecognitionActive) {
+                setTimeout(() => {
+                    try {
+                        speechRecognition.start();
+                    } catch (e) {
+                        // Ignore if already started
+                    }
+                }, 100);
+            }
+            return;
+        }
+        
+        cheddar.setStatus(`Speech error: ${event.error}`);
+    };
+
+    // Handle recognition end
+    speechRecognition.onend = () => {
+        console.log('🎤 Speech recognition ended');
+        
+        // Send any pending transcript
+        if (silenceTimer) {
+            clearTimeout(silenceTimer);
+        }
+        sendTranscribedText();
+        
+        // Auto-restart if still active
+        if (speechRecognitionActive) {
+            setTimeout(() => {
+                try {
+                    speechRecognition.start();
+                } catch (e) {
+                    // Ignore if already started
+                }
+            }, 100);
+        }
+    };
+
+    // Function to send transcribed text
+    async function sendTranscribedText() {
+        if (finalTranscript.trim()) {
+            const textToSend = finalTranscript.trim();
+            console.log('📤 Sending transcribed text:', textToSend);
+            
+            cheddar.setStatus('Processing...');
+            
+            // Send to AI
+            await sendTextMessage(textToSend);
+            
+            // Reset for next utterance
+            finalTranscript = '';
+        }
+    }
+
+    // Start recognition
+    try {
+        speechRecognition.start();
+        console.log('🎤 Speech recognition initialized for', providerName);
+    } catch (error) {
+        console.error('Failed to start speech recognition:', error);
+        cheddar.setStatus('Failed to start speech recognition');
+    }
+}
+
+function stopSpeechRecognition() {
+    speechRecognitionActive = false;
+    
+    if (speechRecognition) {
+        try {
+            speechRecognition.stop();
+        } catch (e) {
+            // Ignore
+        }
+        speechRecognition = null;
+    }
+    
+    console.log('🎤 Speech recognition stopped');
+}
+
+// Expose speech recognition functions
+window.setupSpeechRecognition = setupSpeechRecognition;
+window.stopSpeechRecognition = stopSpeechRecognition;

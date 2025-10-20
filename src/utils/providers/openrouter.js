@@ -14,6 +14,7 @@ class OpenRouterProvider extends BaseLLMProvider {
         // Default to a vision-capable model
         this.model = config.model || 'anthropic/claude-3.5-sonnet';
         this.conversationHistory = [];
+        this.pendingImages = []; // Queue images instead of sending immediately
         this.systemPrompt = '';
         this.callbacks = config.callbacks || {};
         this.appName = config.appName || 'CheatingDaddy';
@@ -141,20 +142,61 @@ class OpenRouterProvider extends BaseLLMProvider {
         });
     }
 
+    _isVisionRelatedQuery(text) {
+        // Check if the query is asking about visual content
+        const visionKeywords = [
+            'screen', 'image', 'picture', 'photo', 'see', 'look', 'show', 'display',
+            'visual', 'screenshot', 'what do you see', 'describe', 'analyze',
+            'this', 'that', 'here', 'current', 'now', 'interface', 'ui', 'page'
+        ];
+        
+        const lowerText = text.toLowerCase();
+        return visionKeywords.some(keyword => lowerText.includes(keyword));
+    }
+
     async sendText(text) {
         if (!this.sessionActive) {
             return { success: false, error: 'No active session' };
         }
 
         try {
+            // Check if we have pending images
+            const hasPendingImages = this.pendingImages.length > 0;
+            
+            // Determine if we should use images based on query context
+            const isVisionQuery = this._isVisionRelatedQuery(text);
+            const shouldUseImages = hasPendingImages && isVisionQuery;
+
+            // Build message content
+            let messageContent;
+            if (shouldUseImages) {
+                // Combine text with pending images
+                messageContent = [
+                    { type: 'text', text: text },
+                    ...this.pendingImages
+                ];
+                this.pendingImages = []; // Clear pending images after using them
+            } else {
+                // Text only - keep images queued for later
+                messageContent = text;
+                
+                // If we have images but query is not vision-related, inform user
+                if (hasPendingImages && !isVisionQuery) {
+                    console.log(`Text-only query detected. ${this.pendingImages.length} images remain queued.`);
+                }
+            }
+
             // Add user message to history
             this.conversationHistory.push({
                 role: 'user',
-                content: text,
+                content: messageContent,
             });
 
             if (this.callbacks.onStatusUpdate) {
-                this.callbacks.onStatusUpdate('Processing...');
+                const status = shouldUseImages 
+                    ? `Processing with ${this.pendingImages.length} images...` 
+                    : 'Processing...';
+                this.callbacks.onStatusUpdate(status);
             }
 
             const response = await this._makeRequest(this.conversationHistory, true);
@@ -190,39 +232,28 @@ class OpenRouterProvider extends BaseLLMProvider {
         }
 
         try {
-            // Add image to conversation history
-            this.conversationHistory.push({
-                role: 'user',
-                content: [
-                    {
-                        type: 'image_url',
-                        image_url: {
-                            url: `data:${mimeType};base64,${base64Data}`,
-                        },
-                    },
-                ],
+            // Queue the image instead of sending immediately (like Gemini)
+            // Images will be sent when user sends text or explicitly requests analysis
+            this.pendingImages.push({
+                type: 'image_url',
+                image_url: {
+                    url: `data:${mimeType};base64,${base64Data}`,
+                },
             });
 
-            if (this.callbacks.onStatusUpdate) {
-                this.callbacks.onStatusUpdate('Processing image...');
+            // Most models support 5-10 images, keep only the most recent 10
+            const MAX_IMAGES = 10;
+            if (this.pendingImages.length > MAX_IMAGES) {
+                this.pendingImages = this.pendingImages.slice(-MAX_IMAGES);
             }
 
-            const response = await this._makeRequest(this.conversationHistory, true);
-            const fullResponse = await this._handleStreamingResponse(response);
-
-            // Add assistant response to history
-            this.conversationHistory.push({
-                role: 'assistant',
-                content: fullResponse,
-            });
-
             if (this.callbacks.onStatusUpdate) {
-                this.callbacks.onStatusUpdate('Ready');
+                this.callbacks.onStatusUpdate(`Image queued (${this.pendingImages.length} pending)`);
             }
 
-            return { success: true, response: fullResponse };
+            return { success: true };
         } catch (error) {
-            console.error('Error sending image to OpenRouter:', error);
+            console.error('Error queuing image for OpenRouter:', error);
             if (this.callbacks.onStatusUpdate) {
                 this.callbacks.onStatusUpdate('Error: ' + error.message);
             }
@@ -235,8 +266,28 @@ class OpenRouterProvider extends BaseLLMProvider {
         return this.sendText(transcription);
     }
 
+    /**
+     * Clear all pending images without sending them
+     */
+    clearPendingImages() {
+        const count = this.pendingImages.length;
+        this.pendingImages = [];
+        console.log(`Cleared ${count} pending images`);
+        if (this.callbacks.onStatusUpdate) {
+            this.callbacks.onStatusUpdate('Pending images cleared');
+        }
+    }
+
+    /**
+     * Get count of pending images
+     */
+    getPendingImageCount() {
+        return this.pendingImages.length;
+    }
+
     async closeSession() {
         this.conversationHistory = [];
+        this.pendingImages = [];
         this.sessionActive = false;
     }
 }

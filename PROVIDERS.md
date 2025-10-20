@@ -5,9 +5,10 @@ This document explains the multi-provider LLM system implemented in Cheating Dad
 ## Overview
 
 The application now supports multiple LLM providers:
-- **Google Gemini** (default) - Real-time audio streaming + vision
-- **Groq** - Ultra-fast inference with vision
-- **OpenRouter** - Access to 100+ models (GPT-4, Claude, Llama, etc.)
+
+-   **Google Gemini** (default) - Real-time audio streaming + vision
+-   **Groq** - Ultra-fast inference with vision
+-   **OpenRouter** - Access to 100+ models (GPT-4, Claude, Llama, etc.)
 
 ## Architecture
 
@@ -26,20 +27,21 @@ src/utils/providers/
 
 ### Key Capabilities
 
-| Provider | Real-time Audio | Vision | Streaming | Tools |
-|----------|----------------|--------|-----------|-------|
-| Gemini   | ✅ | ✅ | ✅ | ✅ (Google Search) |
-| Groq     | ❌ | ✅ | ✅ | ❌ |
-| OpenRouter | ❌ | ✅ | ✅ | ❌ |
+| Provider   | Real-time Audio | Vision | Streaming | Tools              |
+| ---------- | --------------- | ------ | --------- | ------------------ |
+| Gemini     | ✅              | ✅     | ✅        | ✅ (Google Search) |
+| Groq       | ❌              | ✅     | ✅        | ❌                 |
+| OpenRouter | ❌              | ✅     | ✅        | ❌                 |
 
 ## How It Works
 
 ### 1. Provider Selection (UI)
 
 Users select their provider in `MainView.js`:
-- Provider dropdown with descriptions
-- Dynamic API key placeholder
-- Warning messages for non-audio providers
+
+-   Provider dropdown with descriptions
+-   Dynamic API key placeholder
+-   Warning messages for non-audio providers
 
 ### 2. Session Initialization
 
@@ -50,9 +52,8 @@ When "Start Session" is clicked:
 async function initializeLLM(profile, language) {
     const apiKey = localStorage.getItem('apiKey');
     const providerName = localStorage.getItem('llmProvider') || 'gemini';
-    
-    await ipcRenderer.invoke('initialize-llm', 
-        providerName, apiKey, customPrompt, profile, language);
+
+    await ipcRenderer.invoke('initialize-llm', providerName, apiKey, customPrompt, profile, language);
 }
 ```
 
@@ -67,6 +68,7 @@ await currentProvider.initializeSession({ profile, language, customPrompt, tools
 ### 4. Data Flow
 
 **For Gemini (Real-time Audio):**
+
 ```
 Audio Stream → SystemAudioDump → Base64 → sendAudio() → Gemini Live API
 Screenshots → Base64 → sendImage() → Gemini Live API
@@ -74,6 +76,7 @@ Text → sendText() → Gemini Live API
 ```
 
 **For Groq/OpenRouter (Vision + Text):**
+
 ```
 Screenshots → Base64 → sendImage() → Chat Completions API
 Text → sendText() → Chat Completions API
@@ -83,18 +86,21 @@ Audio → ❌ Not supported (requires transcription)
 ## Input Formats
 
 ### Audio (Gemini only)
-- **Format**: PCM, 24kHz, mono, base64 encoded
-- **Chunk Duration**: 0.1 seconds
-- **Streaming**: Real-time via `sendRealtimeInput()`
+
+-   **Format**: PCM, 24kHz, mono, base64 encoded
+-   **Chunk Duration**: 0.1 seconds
+-   **Streaming**: Real-time via `sendRealtimeInput()`
 
 ### Images (All providers)
-- **Format**: JPEG, base64 encoded
-- **Quality**: Configurable (low/medium/high)
-- **Interval**: 5s, 10s, 15s, 30s, or manual
+
+-   **Format**: JPEG, base64 encoded
+-   **Quality**: Configurable (low/medium/high)
+-   **Interval**: 5s, 10s, 15s, 30s, or manual
 
 ### Text (All providers)
-- **Format**: Plain text strings
-- **Use cases**: Manual messages, transcriptions
+
+-   **Format**: Plain text strings
+-   **Use cases**: Manual messages, transcriptions
 
 ## Adding a New Provider
 
@@ -185,20 +191,24 @@ Update `MainView.js`:
 ### Getting API Keys
 
 **Google Gemini:**
-- Visit: https://aistudio.google.com/apikey
-- Free tier: 15 requests/minute
+
+-   Visit: https://aistudio.google.com/apikey
+-   Free tier: 15 requests/minute
 
 **Groq:**
-- Visit: https://console.groq.com/keys
-- Free tier: 30 requests/minute
+
+-   Visit: https://console.groq.com/keys
+-   Free tier: 30 requests/minute
 
 **OpenRouter:**
-- Visit: https://openrouter.ai/keys
-- Pay-per-use: $0.01+ per request (varies by model)
+
+-   Visit: https://openrouter.ai/keys
+-   Pay-per-use: $0.01+ per request (varies by model)
 
 ### Storing API Keys
 
 API keys are stored in localStorage:
+
 ```javascript
 localStorage.setItem('apiKey', 'your-api-key');
 localStorage.setItem('llmProvider', 'gemini'); // or 'groq', 'openrouter'
@@ -211,10 +221,11 @@ localStorage.setItem('llmProvider', 'gemini'); // or 'groq', 'openrouter'
 **Model**: `gemini-live-2.5-flash-preview`
 
 **Features**:
-- Real-time audio streaming (unique to Gemini)
-- Speaker diarization (identifies interviewer vs candidate)
-- Google Search tool integration
-- Context window compression
+
+-   Real-time audio streaming (unique to Gemini)
+-   Speaker diarization (identifies interviewer vs candidate)
+-   Google Search tool integration
+-   Context window compression
 
 **Best for**: Live interviews with audio
 
@@ -223,34 +234,38 @@ localStorage.setItem('llmProvider', 'gemini'); // or 'groq', 'openrouter'
 **Model**: `llama-3.2-90b-vision-preview`
 
 **Features**:
-- Ultra-fast inference (LPU technology)
-- Vision support for screenshots
-- Streaming responses
-- Very low latency
+
+-   Ultra-fast inference (LPU technology)
+-   Vision support for screenshots
+-   Streaming responses
+-   Very low latency
 
 **Best for**: Screenshot-based assistance where speed matters
 
 **Limitations**:
-- No real-time audio streaming
-- No tool/function calling
-- Requires manual screenshot capture or intervals
+
+-   No real-time audio streaming
+-   No tool/function calling
+-   Requires manual screenshot capture or intervals
 
 ### OpenRouter
 
 **Default Model**: `anthropic/claude-3.5-sonnet`
 
 **Features**:
-- Access to 100+ models via single API
-- Model switching without code changes
-- Unified billing across providers
-- Vision support (model-dependent)
+
+-   Access to 100+ models via single API
+-   Model switching without code changes
+-   Unified billing across providers
+-   Vision support (model-dependent)
 
 **Best for**: Experimenting with different models
 
 **Limitations**:
-- No real-time audio streaming
-- Pricing varies by model
-- Some models don't support vision
+
+-   No real-time audio streaming
+-   Pricing varies by model
+-   Some models don't support vision
 
 ## Callbacks
 
@@ -258,19 +273,19 @@ All providers support these callbacks:
 
 ```javascript
 const callbacks = {
-    onStatusUpdate: (status) => {
+    onStatusUpdate: status => {
         // Update UI status
     },
-    onResponse: (response) => {
+    onResponse: response => {
         // Stream response to UI
     },
     onConversationTurn: (transcription, response) => {
         // Save conversation history
     },
-    onError: (error) => {
+    onError: error => {
         // Handle errors
     },
-    onClose: (event) => {
+    onClose: event => {
         // Handle session close
     },
 };
@@ -284,10 +299,10 @@ const callbacks = {
 2. Enter valid API key
 3. Click "Start Session"
 4. Verify:
-   - Status updates appear
-   - Screenshots are captured
-   - Responses stream correctly
-   - Audio works (Gemini only)
+    - Status updates appear
+    - Screenshots are captured
+    - Responses stream correctly
+    - Audio works (Gemini only)
 
 ### Provider Switching
 
@@ -300,44 +315,48 @@ const callbacks = {
 ## Troubleshooting
 
 ### "No active session" error
-- Ensure provider initialized successfully
-- Check API key is valid
-- Verify network connectivity
+
+-   Ensure provider initialized successfully
+-   Check API key is valid
+-   Verify network connectivity
 
 ### Images not sending
-- Check base64 encoding is correct
-- Verify image size > 1KB
-- Ensure provider supports vision
+
+-   Check base64 encoding is correct
+-   Verify image size > 1KB
+-   Ensure provider supports vision
 
 ### Audio not working (Gemini)
-- Only works on macOS with SystemAudioDump
-- Verify SystemAudioDump has permissions
-- Check audio device is active
+
+-   Only works on macOS with SystemAudioDump
+-   Verify SystemAudioDump has permissions
+-   Check audio device is active
 
 ### Streaming not working
-- Verify provider supports streaming
-- Check network isn't blocking SSE
-- Look for CORS issues in console
+
+-   Verify provider supports streaming
+-   Check network isn't blocking SSE
+-   Look for CORS issues in console
 
 ## Performance Considerations
 
 ### Token Usage
 
-- **Gemini**: Audio = 32 tokens/sec, Images = 258-2064 tokens
-- **Groq**: Very fast, low cost per token
-- **OpenRouter**: Varies by model
+-   **Gemini**: Audio = 32 tokens/sec, Images = 258-2064 tokens
+-   **Groq**: Very fast, low cost per token
+-   **OpenRouter**: Varies by model
 
 ### Rate Limiting
 
-- Implement token tracking (already done in renderer.js)
-- Respect provider rate limits
-- Use appropriate screenshot intervals
+-   Implement token tracking (already done in renderer.js)
+-   Respect provider rate limits
+-   Use appropriate screenshot intervals
 
 ### Memory
 
-- Audio buffers are cleared after processing
-- Conversation history grows over time
-- Consider limiting history length for long sessions
+-   Audio buffers are cleared after processing
+-   Conversation history grows over time
+-   Consider limiting history length for long sessions
 
 ## Future Enhancements
 
@@ -350,6 +369,7 @@ const callbacks = {
 ## Contributing
 
 When adding new providers:
+
 1. Follow the `BaseLLMProvider` interface
 2. Add comprehensive error handling
 3. Support streaming when possible
