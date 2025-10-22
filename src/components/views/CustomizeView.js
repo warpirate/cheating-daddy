@@ -491,6 +491,16 @@ export class CustomizeView extends LitElement {
                 name: 'Exam Assistant',
                 description: 'Academic assistance for test-taking and exam questions',
             },
+            {
+                value: 'test',
+                name: 'Online Test',
+                description: 'Rapid assistance for timed online tests and coding challenges',
+            },
+            {
+                value: 'homework',
+                name: 'Homework Helper',
+                description: 'Comprehensive help with assignments and problem sets',
+            },
         ];
     }
 
@@ -537,6 +547,8 @@ export class CustomizeView extends LitElement {
             presentation: 'Presentation',
             negotiation: 'Negotiation',
             exam: 'Exam Assistant',
+            test: 'Online Test',
+            homework: 'Homework Helper',
         };
     }
 
