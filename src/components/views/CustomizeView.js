@@ -198,6 +198,129 @@ export class CustomizeView extends LitElement {
             font-size: 11px;
         }
 
+        /* Smart Suggestions Panel */
+        .suggestions-panel {
+            margin-top: 12px;
+            background: rgba(0, 122, 255, 0.1);
+            border: 1px solid rgba(0, 122, 255, 0.3);
+            border-radius: 6px;
+            padding: 12px;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .suggestions-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .suggestions-icon {
+            font-size: 16px;
+        }
+
+        .suggestions-title {
+            flex: 1;
+            font-weight: 600;
+            color: white;
+            font-size: 12px;
+        }
+
+        .dismiss-btn {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 3px;
+            transition: all 0.2s;
+        }
+
+        .dismiss-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .suggestions-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .suggestion-item {
+            display: flex;
+            gap: 8px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+            border-left: 3px solid;
+        }
+
+        .suggestion-error {
+            border-left-color: #ff3b30;
+        }
+
+        .suggestion-warning {
+            border-left-color: #ff9500;
+        }
+
+        .suggestion-info {
+            border-left-color: #007aff;
+        }
+
+        .suggestion-tip {
+            border-left-color: #34c759;
+        }
+
+        .suggestion-success {
+            border-left-color: #34c759;
+        }
+
+        .suggestion-icon {
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .suggestion-content {
+            flex: 1;
+            font-size: 11px;
+        }
+
+        .suggestion-message {
+            color: white;
+            font-weight: 500;
+            margin-bottom: 3px;
+        }
+
+        .suggestion-details {
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 3px;
+        }
+
+        .suggestion-example {
+            color: rgba(255, 255, 255, 0.6);
+            font-style: italic;
+            font-size: 10px;
+            margin-top: 4px;
+        }
+
         .current-selection {
             display: inline-flex;
             align-items: center;
@@ -493,6 +616,11 @@ export class CustomizeView extends LitElement {
         // Font size default (in pixels)
         this.fontSize = 20;
 
+        // Smart suggestions
+        this.suggestions = [];
+        this.showSuggestions = true;
+        this.analysisDebounceTimer = null;
+
         this.loadKeybinds();
         this.loadGoogleSearchSettings();
         this.loadAdvancedModeSettings();
@@ -646,7 +774,108 @@ export class CustomizeView extends LitElement {
         }
         
         localStorage.setItem('customPrompt', value);
+        
+        // Debounce analysis
+        if (this.analysisDebounceTimer) {
+            clearTimeout(this.analysisDebounceTimer);
+        }
+        
+        this.analysisDebounceTimer = setTimeout(() => {
+            this.analyzeSuggestions();
+        }, 1000); // Analyze 1 second after user stops typing
+        
         this.requestUpdate(); // Update character counter
+    }
+
+    analyzeSuggestions() {
+        const customPrompt = localStorage.getItem('customPrompt') || '';
+        const profile = this.selectedProfile || 'interview';
+        
+        if (!this.showSuggestions) {
+            this.suggestions = [];
+            return;
+        }
+        
+        // Check if contextAnalyzer is available
+        if (typeof window !== 'undefined' && window.contextAnalyzer) {
+            this.suggestions = window.contextAnalyzer.analyze(customPrompt, profile);
+            this.requestUpdate();
+            console.log('📊 Context analysis complete:', this.suggestions.length, 'suggestions');
+        } else {
+            // Load the analyzer dynamically if not available
+            this.loadContextAnalyzer();
+        }
+    }
+
+    loadContextAnalyzer() {
+        if (typeof window !== 'undefined' && !window.contextAnalyzer) {
+            // Import the analyzer
+            import('../../utils/contextAnalyzer.js').then(module => {
+                window.contextAnalyzer = module.contextAnalyzer;
+                this.analyzeSuggestions();
+            }).catch(err => {
+                console.error('Failed to load context analyzer:', err);
+            });
+        }
+    }
+
+    dismissSuggestions() {
+        this.showSuggestions = false;
+        this.suggestions = [];
+        this.requestUpdate();
+    }
+
+    renderSmartSuggestions() {
+        if (!this.suggestions || this.suggestions.length === 0) {
+            return '';
+        }
+        
+        return html`
+            <div class="suggestions-panel">
+                <div class="suggestions-header">
+                    <span class="suggestions-icon">💡</span>
+                    <span class="suggestions-title">Smart Suggestions</span>
+                    <button 
+                        class="dismiss-btn" 
+                        @click=${this.dismissSuggestions}
+                        title="Dismiss suggestions"
+                    >
+                        ✕
+                    </button>
+                </div>
+                
+                <div class="suggestions-list">
+                    ${this.suggestions.map(suggestion => this.renderSuggestion(suggestion))}
+                </div>
+            </div>
+        `;
+    }
+
+    renderSuggestion(suggestion) {
+        const iconMap = {
+            error: '❌',
+            warning: '⚠️',
+            info: 'ℹ️',
+            tip: '💡',
+            success: '✅'
+        };
+        
+        return html`
+            <div class="suggestion-item suggestion-${suggestion.type}">
+                <div class="suggestion-icon">${iconMap[suggestion.type]}</div>
+                <div class="suggestion-content">
+                    <div class="suggestion-message">${suggestion.message}</div>
+                    ${suggestion.details ? html`
+                        <div class="suggestion-details">${suggestion.details}</div>
+                    ` : ''}
+                    ${suggestion.example ? html`
+                        <div class="suggestion-example">
+                            <strong>Example:</strong> ${suggestion.example}
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
     }
 
     getProfileTemplates() {
@@ -1534,6 +1763,9 @@ Calculator Allowed: [Yes / No]`
                                 maxlength="2000"
                                 @input=${this.handleCustomPromptInput}
                             ></textarea>
+                            
+                            ${this.renderSmartSuggestions()}
+                            
                             <div class="form-description">
                                 Personalize the AI's behavior with specific instructions that will be added to the
                                 ${profileNames[this.selectedProfile] || 'selected profile'} base prompts. 

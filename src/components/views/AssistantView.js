@@ -289,6 +289,48 @@ export class AssistantView extends LitElement {
         .save-button svg {
             stroke: currentColor !important;
         }
+        /* Profile Switcher */
+        .profile-switcher {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .profile-switcher label {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .profile-switcher select {
+            flex: 1;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .profile-switcher select:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .switching-indicator {
+            font-size: 12px;
+            color: #007aff;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
     `;
 
     static properties = {
@@ -304,7 +346,9 @@ export class AssistantView extends LitElement {
         super();
         this.responses = [];
         this.currentResponseIndex = -1;
-        this.selectedProfile = 'interview';
+        this.selectedProfile = localStorage.getItem('selectedProfile') || 'interview';
+        this.currentProfile = this.selectedProfile;
+        this.isSwitchingProfile = false;
         this.onSendText = () => {};
         this._lastAnimatedWordCount = 0;
         // Load saved responses from localStorage
@@ -313,6 +357,73 @@ export class AssistantView extends LitElement {
         } catch (e) {
             this.savedResponses = [];
         }
+    }
+
+    async handleProfileSwitch(e) {
+        const newProfile = e.target.value;
+        
+        if (newProfile === this.currentProfile) {
+            return;
+        }
+        
+        // Confirm switch if conversation exists
+        if (this.responses && this.responses.length > 0) {
+            const confirmed = confirm(
+                `Switch to ${this.getProfileDisplayName(newProfile)}?\n\n` +
+                `Your conversation history will be preserved, but the AI will ` +
+                `respond according to the new profile.`
+            );
+            
+            if (!confirmed) {
+                e.target.value = this.currentProfile;
+                return;
+            }
+        }
+        
+        this.isSwitchingProfile = true;
+        this.requestUpdate();
+        
+        try {
+            const { ipcRenderer } = require('electron');
+            
+            // Close current LLM session
+            await ipcRenderer.invoke('close-llm-session');
+            
+            // Update profile
+            const oldProfile = this.currentProfile;
+            this.currentProfile = newProfile;
+            this.selectedProfile = newProfile;
+            localStorage.setItem('selectedProfile', newProfile);
+            
+            // Reinitialize LLM with new profile
+            const language = localStorage.getItem('selectedLanguage') || 'en-US';
+            await cheddar.initializeLLM(newProfile, language);
+            
+            console.log(`✅ Profile switched: ${oldProfile} → ${newProfile}`);
+            
+        } catch (error) {
+            console.error('Error switching profile:', error);
+            alert(`Failed to switch profile: ${error.message}`);
+            e.target.value = this.currentProfile;
+        } finally {
+            this.isSwitchingProfile = false;
+            this.requestUpdate();
+        }
+    }
+
+    getProfileDisplayName(profile) {
+        const names = {
+            interview: 'Job Interview',
+            sales: 'Sales Call',
+            meeting: 'Meeting',
+            presentation: 'Presentation',
+            negotiation: 'Negotiation',
+            firstday: 'First Day Work',
+            exam: 'Exam',
+            test: 'Online Test',
+            homework: 'Homework'
+        };
+        return names[profile] || profile;
     }
 
     getProfileNames() {
@@ -598,6 +709,26 @@ export class AssistantView extends LitElement {
         const isSaved = this.isResponseSaved();
 
         return html`
+            <div class="profile-switcher">
+                <label>Active Profile:</label>
+                <select 
+                    .value=${this.currentProfile} 
+                    @change=${this.handleProfileSwitch}
+                    ?disabled=${this.isSwitchingProfile}
+                >
+                    <option value="interview">💼 Job Interview</option>
+                    <option value="sales">💰 Sales Call</option>
+                    <option value="meeting">🤝 Meeting</option>
+                    <option value="presentation">🎤 Presentation</option>
+                    <option value="negotiation">🤝 Negotiation</option>
+                    <option value="firstday">👋 First Day Work</option>
+                    <option value="exam">📝 Exam</option>
+                    <option value="test">⚡ Online Test</option>
+                    <option value="homework">📚 Homework</option>
+                </select>
+                ${this.isSwitchingProfile ? html`<span class="switching-indicator">Switching...</span>` : ''}
+            </div>
+
             <div class="response-container" id="responseContainer"></div>
 
             <div class="text-input-container">

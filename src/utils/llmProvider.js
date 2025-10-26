@@ -450,6 +450,20 @@ function setupLLMIpcHandlers(providerRef) {
         }
     });
 
+    // Close LLM session (for profile switching)
+    ipcMain.handle('close-llm-session', async (event) => {
+        try {
+            if (currentProvider) {
+                await currentProvider.closeSession();
+                console.log('LLM session closed successfully');
+            }
+            return { success: true };
+        } catch (error) {
+            console.error('Error closing LLM session:', error);
+            return { success: false, error: error.message };
+        }
+    });
+
     // Conversation history handlers
     ipcMain.handle('get-current-session', async event => {
         try {
