@@ -1,6 +1,6 @@
 # LLM Provider Integration Guide
 
-This document explains the multi-provider LLM system implemented in Cheating Daddy.
+This document explains the multi-provider LLM system implemented in MeharNolan.
 
 ## Overview
 

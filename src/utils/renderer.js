@@ -172,7 +172,7 @@ ipcRenderer.on('update-status', (event, status) => {
     cheddar.setStatus(status);
 });
 
-// Listen for responses - REMOVED: This is handled in CheatingDaddyApp.js to avoid duplicates
+// Listen for responses - REMOVED: This is handled in MeharNolanApp.js to avoid duplicates
 // ipcRenderer.on('update-response', (event, response) => {
 //     console.log('Gemini response:', response);
 //     cheddar.e().setResponse(response);
@@ -777,21 +777,21 @@ function handleShortcut(shortcutKey) {
 }
 
 // Create reference to the main app element
-const cheatingDaddyApp = document.querySelector('cheating-daddy-app');
+const meharNolanApp = document.querySelector('meharnolan-app');
 
 // Consolidated cheddar object - all functions in one place
 const cheddar = {
     // Element access
-    element: () => cheatingDaddyApp,
-    e: () => cheatingDaddyApp,
+    element: () => meharNolanApp,
+    e: () => meharNolanApp,
 
     // App state functions - access properties directly from the app element
-    getCurrentView: () => cheatingDaddyApp.currentView,
-    getLayoutMode: () => cheatingDaddyApp.layoutMode,
+    getCurrentView: () => meharNolanApp.currentView,
+    getLayoutMode: () => meharNolanApp.layoutMode,
 
     // Status and response functions
-    setStatus: text => cheatingDaddyApp.setStatus(text),
-    setResponse: response => cheatingDaddyApp.setResponse(response),
+    setStatus: text => meharNolanApp.setStatus(text),
+    setResponse: response => meharNolanApp.setResponse(response),
 
     // Core functionality
     initializeGemini, // Backward compatibility

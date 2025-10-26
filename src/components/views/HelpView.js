@@ -297,10 +297,10 @@ export class HelpView extends LitElement {
                         <span>Community & Support</span>
                     </div>
                     <div class="community-links">
-                        <div class="community-link" @click=${() => this.handleExternalLinkClick('https://cheatingdaddy.com')}>
+                        <div class="community-link" @click=${() => this.handleExternalLinkClick('https://meharnolan.com')}>
                             🌐 Official Website
                         </div>
-                        <div class="community-link" @click=${() => this.handleExternalLinkClick('https://github.com/sohzm/cheating-daddy')}>
+                        <div class="community-link" @click=${() => this.handleExternalLinkClick('https://github.com/sohzm/meharnolan')}>
                             📂 GitHub Repository
                         </div>
                         <div class="community-link" @click=${() => this.handleExternalLinkClick('https://discord.gg/GCBdubnXfJ')}>
@@ -438,6 +438,10 @@ export class HelpView extends LitElement {
                         <div class="profile-item">
                             <div class="profile-name">Negotiation</div>
                             <div class="profile-description">Guidance for business negotiations and deals</div>
+                        </div>
+                        <div class="profile-item">
+                            <div class="profile-name">First Day Work</div>
+                            <div class="profile-description">Calm guidance for navigating your first day at a new job</div>
                         </div>
                         <div class="profile-item">
                             <div class="profile-name">Exam Assistant</div>

@@ -149,6 +149,55 @@ export class CustomizeView extends LitElement {
             gap: 3px;
         }
 
+        .char-counter {
+            margin-left: auto;
+            font-size: 10px;
+            font-weight: 400;
+            color: var(--description-color, rgba(255, 255, 255, 0.5));
+        }
+
+        .template-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 8px;
+            align-items: center;
+        }
+
+        .template-label {
+            font-size: 11px;
+            color: var(--description-color, rgba(255, 255, 255, 0.6));
+            font-weight: 500;
+        }
+
+        .template-btn {
+            background: var(--button-background, rgba(0, 122, 255, 0.15));
+            color: var(--accent-color, #007aff);
+            border: 1px solid var(--accent-color, rgba(0, 122, 255, 0.3));
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .template-btn:hover {
+            background: var(--button-hover-background, rgba(0, 122, 255, 0.25));
+            border-color: var(--accent-color, #007aff);
+            transform: translateY(-1px);
+        }
+
+        .template-btn:active {
+            transform: translateY(0);
+        }
+
+        .custom-prompt-textarea {
+            font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+            font-size: 11px;
+        }
+
         .current-selection {
             display: inline-flex;
             align-items: center;
@@ -487,6 +536,11 @@ export class CustomizeView extends LitElement {
                 description: 'Guidance for business negotiations and deals',
             },
             {
+                value: 'firstday',
+                name: 'First Day Work',
+                description: 'Calm guidance for navigating your first day at a new job',
+            },
+            {
                 value: 'exam',
                 name: 'Exam Assistant',
                 description: 'Academic assistance for test-taking and exam questions',
@@ -546,6 +600,7 @@ export class CustomizeView extends LitElement {
             meeting: 'Business Meeting',
             presentation: 'Presentation',
             negotiation: 'Negotiation',
+            firstday: 'First Day Work',
             exam: 'Exam Assistant',
             test: 'Online Test',
             homework: 'Homework Helper',
@@ -582,7 +637,549 @@ export class CustomizeView extends LitElement {
     }
 
     handleCustomPromptInput(e) {
-        localStorage.setItem('customPrompt', e.target.value);
+        const maxLength = 2000; // ~500 tokens
+        let value = e.target.value;
+        
+        if (value.length > maxLength) {
+            value = value.substring(0, maxLength);
+            e.target.value = value;
+        }
+        
+        localStorage.setItem('customPrompt', value);
+        this.requestUpdate(); // Update character counter
+    }
+
+    getProfileTemplates() {
+        return {
+            interview: [
+                {
+                    name: 'Software Engineer',
+                    template: `I'm interviewing for a Senior Software Engineer role at [Company Name].
+
+Key Details:
+- 5+ years experience with React, Node.js, and TypeScript
+- Led a team of 3 developers at my current company
+- Built a microservices architecture handling 1M+ requests/day
+- Strong focus on system design and scalability
+
+Company Info:
+- [Company] is a [industry] company focused on [product/service]
+- The role involves [key responsibilities]
+- Tech stack: [technologies they use]
+
+What I want to emphasize:
+- My leadership experience and mentoring skills
+- Technical depth in [specific area]
+- Problem-solving approach and system thinking`
+                },
+                {
+                    name: 'Product Manager',
+                    template: `I'm interviewing for a Product Manager position at [Company Name].
+
+Background:
+- 4 years of PM experience in [industry]
+- Launched 3 major features with 50K+ active users
+- Strong in user research, roadmap planning, and stakeholder management
+- Experience with Agile/Scrum methodologies
+
+Company Context:
+- [Company] builds [product description]
+- They're looking for someone to own [product area]
+- Key challenges: [known challenges or goals]
+
+Focus Areas:
+- Data-driven decision making
+- Cross-functional collaboration
+- User-centric product development`
+                },
+                {
+                    name: 'Generic Template',
+                    template: `I'm interviewing for a [Job Title] role at [Company Name].
+
+My Background:
+- [Years] of experience in [field/industry]
+- Key skills: [skill 1], [skill 2], [skill 3]
+- Major achievements: [achievement 1], [achievement 2]
+
+About the Company:
+- [Company] is known for [what they do]
+- The role involves [key responsibilities]
+- Company culture: [culture notes if known]
+
+What I Want to Highlight:
+- [Key strength 1]
+- [Key strength 2]
+- [Relevant experience or project]`
+                }
+            ],
+            sales: [
+                {
+                    name: 'SaaS Sales',
+                    template: `I'm selling [Product Name], a SaaS platform for [target audience].
+
+Product Details:
+- Pricing: $[X]/month or $[Y]/year
+- Key features: [feature 1], [feature 2], [feature 3]
+- Main value proposition: [how it helps customers]
+- ROI: Customers typically see [X]% improvement in [metric]
+
+Target Audience:
+- [Job titles] at [company size] companies
+- Industries: [industry 1], [industry 2]
+- Pain points: [problem 1], [problem 2]
+
+Competitors:
+- Main competitors: [competitor 1], [competitor 2]
+- Our differentiators: [what makes us unique]
+
+Common Objections:
+- Price concerns: [how to handle]
+- "We already use [competitor]": [response strategy]`
+                },
+                {
+                    name: 'Generic Sales',
+                    template: `I'm selling [Product/Service Name] to [target customer type].
+
+What We Offer:
+- [Brief product/service description]
+- Price point: [pricing information]
+- Key benefits: [benefit 1], [benefit 2], [benefit 3]
+
+Target Customers:
+- [Customer profile]
+- Common pain points: [pain 1], [pain 2]
+
+Competitive Landscape:
+- Main competitors: [names]
+- Our advantages: [differentiators]
+
+Sales Goals:
+- [What you're trying to achieve in this call]`
+                }
+            ],
+            meeting: [
+                {
+                    name: 'Project Status Update',
+                    template: `Meeting Type: Project Status Update
+
+Project: [Project Name]
+My Role: [Your role/responsibility]
+
+Current Status:
+- Progress: [X]% complete
+- Timeline: [on track / behind / ahead]
+- Budget: [status]
+
+Key Updates:
+- [Recent accomplishment 1]
+- [Recent accomplishment 2]
+- [Challenge or blocker]
+
+Next Steps:
+- [Action item 1]
+- [Action item 2]
+
+Questions I May Face:
+- [Anticipated question 1]
+- [Anticipated question 2]`
+                },
+                {
+                    name: 'Generic Meeting',
+                    template: `Meeting Type: [Type of meeting]
+Attendees: [Key people attending]
+My Role: [Participant / Presenter / Facilitator]
+
+Meeting Purpose:
+- [Main objective]
+
+Key Topics:
+- [Topic 1]
+- [Topic 2]
+- [Topic 3]
+
+My Preparation:
+- [What I need to discuss or present]
+- [Questions I have]
+- [Decisions needed]`
+                }
+            ],
+            presentation: [
+                {
+                    name: 'Product Demo',
+                    template: `Presentation Type: Product Demo
+Audience: [Who's attending - titles, company size]
+Duration: [X] minutes
+
+Product: [Product Name]
+Key Message: [Main value proposition]
+
+Demo Flow:
+1. [Feature/section 1]
+2. [Feature/section 2]
+3. [Feature/section 3]
+
+Key Metrics to Mention:
+- [Metric 1]: [value]
+- [Metric 2]: [value]
+
+Anticipated Questions:
+- [Question 1]
+- [Question 2]
+
+Call to Action:
+- [What you want audience to do next]`
+                },
+                {
+                    name: 'Generic Presentation',
+                    template: `Presentation Topic: [Topic]
+Audience: [Who's attending]
+Duration: [X] minutes
+
+Main Points:
+1. [Point 1]
+2. [Point 2]
+3. [Point 3]
+
+Key Data/Facts:
+- [Stat or fact 1]
+- [Stat or fact 2]
+
+Potential Questions:
+- [Question 1]
+- [Question 2]`
+                }
+            ],
+            negotiation: [
+                {
+                    name: 'Salary Negotiation',
+                    template: `Negotiation Type: Salary/Compensation
+
+Current Offer:
+- Base salary: $[X]
+- Bonus: [details]
+- Equity: [details]
+- Other benefits: [list]
+
+My Target:
+- Desired base: $[Y]
+- Justification: [market rate, experience, competing offers]
+
+Market Research:
+- Industry average for this role: $[range]
+- My current compensation: $[amount]
+- Competing offer (if any): $[amount]
+
+Negotiation Strategy:
+- Primary ask: [what you want most]
+- Secondary priorities: [other items]
+- Walk-away point: [minimum acceptable]
+
+Leverage Points:
+- [Unique skill or experience]
+- [Market demand]
+- [Other offers or opportunities]`
+                },
+                {
+                    name: 'Business Deal',
+                    template: `Negotiation Type: [Contract / Partnership / Deal]
+
+What We Want:
+- [Primary objective]
+- [Secondary objectives]
+
+What They Want:
+- [Their likely priorities]
+
+Our Position:
+- Strengths: [what we bring to the table]
+- Constraints: [our limitations]
+
+Their Position:
+- Strengths: [what they have]
+- Constraints: [their limitations]
+
+BATNA (Best Alternative):
+- [What we'll do if this doesn't work out]
+
+Negotiation Range:
+- Ideal outcome: [best case]
+- Acceptable outcome: [middle ground]
+- Walk-away point: [minimum acceptable]`
+                }
+            ],
+            firstday: [
+                {
+                    name: 'Tech Company',
+                    template: `I'm starting my first day at [Company Name] as a [Job Title].
+
+About Me:
+- [X] years of experience in [field/technology]
+- Previously worked at [Previous Company] as [Previous Role]
+- Strong background in [key skill 1], [key skill 2], [key skill 3]
+- Most proud of: [major achievement or project]
+
+About This Role:
+- Joining the [Team Name] team
+- Will be working on [project/product area]
+- Reports to [Manager Name]
+- Team size: [number] people
+
+What I Know About the Company:
+- [Company] builds [product/service description]
+- Known for [company culture trait or achievement]
+- Tech stack includes: [technologies if known]
+- Recent news: [any recent company news]
+
+My Goals for Today:
+- Make a great first impression
+- Learn team dynamics and culture
+- Understand my initial responsibilities
+- Set up development environment
+- Meet key team members
+
+Conversation Style:
+- I'm naturally [friendly/analytical/enthusiastic]
+- I prefer to [listen first/ask questions/jump in]
+- I want to come across as [confident but humble/eager to learn/collaborative]`
+                },
+                {
+                    name: 'Generic First Day',
+                    template: `I'm starting my first day at [Company Name] as a [Job Title].
+
+My Background:
+- [X] years of experience in [industry/field]
+- Previously at [Previous Company] doing [what you did]
+- Key strengths: [strength 1], [strength 2], [strength 3]
+- Notable achievement: [something you're proud of]
+
+About This Position:
+- Role: [Job Title]
+- Department: [Department Name]
+- Manager: [Manager Name]
+- Key responsibilities: [what you'll be doing]
+
+What I Know About the Company:
+- Industry: [industry]
+- Company size: [number of employees]
+- Culture: [what you know about culture]
+- Why I joined: [what attracted you]
+
+My Personality:
+- Communication style: [direct/diplomatic/friendly]
+- Work style: [collaborative/independent/flexible]
+- How I want to be perceived: [professional/approachable/competent]
+
+First Day Goals:
+- Understand team structure and dynamics
+- Learn key processes and tools
+- Make positive connections
+- Clarify expectations and priorities`
+                },
+                {
+                    name: 'Career Change',
+                    template: `I'm starting my first day at [Company Name] as a [Job Title] - this is a career change for me.
+
+My Previous Career:
+- Spent [X] years in [previous field/industry]
+- Most recent role: [Previous Job Title] at [Previous Company]
+- Transferable skills: [skill 1], [skill 2], [skill 3]
+
+Why I'm Changing Careers:
+- [Brief reason for career change]
+- What attracted me to [new field]: [motivation]
+- Relevant preparation: [courses/certifications/projects]
+
+About This New Role:
+- Position: [Job Title]
+- Team: [Team Name]
+- Manager: [Manager Name]
+- What I'll be doing: [responsibilities]
+
+My Approach:
+- I'm aware I'm new to [field] but bring [relevant experience]
+- Eager to learn and ask questions
+- Want to leverage my [previous industry] background where relevant
+- Committed to getting up to speed quickly
+
+How I Want to Present Myself:
+- Confident in my transferable skills
+- Humble about what I need to learn
+- Enthusiastic about the career change
+- Professional and adaptable`
+                }
+            ],
+            exam: [
+                {
+                    name: 'Computer Science Exam',
+                    template: `Exam: [Course Name] - [Exam Type]
+Duration: [X] minutes
+Format: [Multiple choice / Short answer / Coding / Mixed]
+
+Topics Covered:
+- [Topic 1]
+- [Topic 2]
+- [Topic 3]
+
+Key Concepts:
+- [Concept 1]
+- [Concept 2]
+
+Allowed Resources:
+- [Calculator / Notes / Open book / None]
+
+Focus Areas:
+- [What professor emphasized]
+- [Common exam patterns]`
+                },
+                {
+                    name: 'Generic Exam',
+                    template: `Exam Subject: [Subject]
+Level: [Course level or grade]
+Duration: [X] minutes
+
+Topics:
+- [Topic 1]
+- [Topic 2]
+- [Topic 3]
+
+Format:
+- [Question types]
+
+Allowed Materials:
+- [What you can use]`
+                }
+            ],
+            test: [
+                {
+                    name: 'Coding Challenge',
+                    template: `Test Type: Coding Challenge
+Platform: [LeetCode / HackerRank / Company platform]
+Duration: [X] minutes
+Language: [Programming language]
+
+Focus Areas:
+- Data structures: [arrays, trees, graphs, etc.]
+- Algorithms: [sorting, searching, dynamic programming, etc.]
+- Complexity: [Expected time/space complexity]
+
+My Strengths:
+- [Strong area 1]
+- [Strong area 2]
+
+Need Quick Help With:
+- [Weak area 1]
+- [Weak area 2]
+
+Test Format:
+- [Number] problems
+- Difficulty: [Easy / Medium / Hard]`
+                },
+                {
+                    name: 'Certification Exam',
+                    template: `Certification: [Certification Name]
+Duration: [X] minutes
+Format: [Multiple choice / Practical / Mixed]
+
+Key Topics:
+- [Topic 1]
+- [Topic 2]
+- [Topic 3]
+
+Passing Score: [X]%
+
+Focus Areas:
+- [What's heavily tested]
+
+Time Management:
+- [Strategy for pacing]`
+                }
+            ],
+            homework: [
+                {
+                    name: 'Programming Assignment',
+                    template: `Assignment: [Assignment Name]
+Course: [Course Name]
+Due: [Date and time]
+Language: [Programming language]
+
+Requirements:
+- [Requirement 1]
+- [Requirement 2]
+- [Requirement 3]
+
+Constraints:
+- [Any limitations or rules]
+
+What I Need Help With:
+- [Specific area 1]
+- [Specific area 2]
+
+My Approach So Far:
+- [What you've tried]
+
+Grading Criteria:
+- [What's being evaluated]`
+                },
+                {
+                    name: 'Essay/Research',
+                    template: `Assignment: [Assignment Title]
+Subject: [Subject/Course]
+Due: [Date]
+Length: [Word count or pages]
+
+Topic: [Essay topic or research question]
+
+Requirements:
+- [Requirement 1]
+- [Requirement 2]
+
+Sources Needed:
+- [Number] sources
+- Types: [Academic journals / Books / etc.]
+
+My Thesis/Argument:
+- [Your main argument or thesis statement]
+
+Areas I Need Help With:
+- [Specific section or concept]
+
+Citation Style: [APA / MLA / Chicago / etc.]`
+                },
+                {
+                    name: 'Math/Science Problem Set',
+                    template: `Assignment: [Problem Set Name]
+Subject: [Math / Physics / Chemistry / etc.]
+Due: [Date]
+
+Topics Covered:
+- [Topic 1]
+- [Topic 2]
+
+Number of Problems: [X]
+
+Concepts I Understand:
+- [Concept 1]
+- [Concept 2]
+
+Concepts I'm Struggling With:
+- [Concept 1]
+- [Concept 2]
+
+Show Work Required: [Yes / No]
+
+Calculator Allowed: [Yes / No]`
+                }
+            ]
+        };
+    }
+
+    loadTemplate(template) {
+        const textarea = this.shadowRoot.querySelector('.custom-prompt-textarea');
+        if (textarea) {
+            textarea.value = template;
+            localStorage.setItem('customPrompt', template);
+            this.requestUpdate();
+        }
     }
 
     getDefaultKeybinds() {
@@ -903,19 +1500,44 @@ export class CustomizeView extends LitElement {
                         </div>
 
                         <div class="form-group full-width">
-                            <label class="form-label">Custom AI Instructions</label>
+                            <label class="form-label">
+                                Custom AI Instructions
+                                <span class="char-counter">
+                                    ${(localStorage.getItem('customPrompt') || '').length} / 2000 characters
+                                </span>
+                            </label>
+                            
+                            ${this.getProfileTemplates()[this.selectedProfile] ? html`
+                                <div class="template-buttons">
+                                    <span class="template-label">Quick Templates:</span>
+                                    ${this.getProfileTemplates()[this.selectedProfile].map(
+                                        template => html`
+                                            <button
+                                                class="template-btn"
+                                                @click=${() => this.loadTemplate(template.template)}
+                                                type="button"
+                                            >
+                                                ${template.name}
+                                            </button>
+                                        `
+                                    )}
+                                </div>
+                            ` : ''}
+                            
                             <textarea
-                                class="form-control"
+                                class="form-control custom-prompt-textarea"
                                 placeholder="Add specific instructions for how you want the AI to behave during ${
                                     profileNames[this.selectedProfile] || 'this interaction'
                                 }..."
                                 .value=${localStorage.getItem('customPrompt') || ''}
-                                rows="4"
+                                rows="6"
+                                maxlength="2000"
                                 @input=${this.handleCustomPromptInput}
                             ></textarea>
                             <div class="form-description">
                                 Personalize the AI's behavior with specific instructions that will be added to the
-                                ${profileNames[this.selectedProfile] || 'selected profile'} base prompts
+                                ${profileNames[this.selectedProfile] || 'selected profile'} base prompts. 
+                                Use templates above as a starting point and customize them for your situation.
                 </div>
                 </div>
             </div>

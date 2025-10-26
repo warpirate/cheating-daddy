@@ -1,8 +1,8 @@
 {
-    "name": "cheating-daddy",
-    "productName": "cheating-daddy",
+    "name": "meharnolan",
+    "productName": "meharnolan",
     "version": "0.4.0",
-    "description": "cheating daddy",
+    "description": "MeharNolan AI Assistant",
     "main": "src/index.js",
     "scripts": {
         "start": "electron-forge start",
@@ -13,11 +13,11 @@
         "test": "vitest run"
     },
     "keywords": [
-        "cheating daddy",
-        "cheating daddy ai",
-        "cheating daddy ai assistant",
-        "cheating daddy ai assistant for interviews",
-        "cheating daddy ai assistant for interviews"
+        "meharnolan",
+        "meharnolan ai",
+        "meharnolan ai assistant",
+        "ai assistant for interviews",
+        "ai assistant for work"
     ],
     "author": {
         "name": "sohzm",

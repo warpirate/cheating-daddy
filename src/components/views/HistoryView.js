@@ -407,7 +407,10 @@ export class HistoryView extends LitElement {
             meeting: 'Business Meeting',
             presentation: 'Presentation',
             negotiation: 'Negotiation',
+            firstday: 'First Day Work',
             exam: 'Exam Assistant',
+            test: 'Online Test',
+            homework: 'Homework Helper',
         };
     }
 

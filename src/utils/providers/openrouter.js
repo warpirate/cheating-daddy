@@ -17,7 +17,7 @@ class OpenRouterProvider extends BaseLLMProvider {
         this.pendingImages = []; // Queue images instead of sending immediately
         this.systemPrompt = '';
         this.callbacks = config.callbacks || {};
-        this.appName = config.appName || 'CheatingDaddy';
+        this.appName = config.appName || 'MeharNolan';
     }
 
     getName() {
@@ -71,7 +71,7 @@ class OpenRouterProvider extends BaseLLMProvider {
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${this.apiKey}`,
-                    'HTTP-Referer': 'https://github.com/sohzm/cheating-daddy',
+                    'HTTP-Referer': 'https://github.com/sohzm/meharnolan',
                     'X-Title': this.appName,
                     'Content-Length': Buffer.byteLength(postData),
                 },

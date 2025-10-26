@@ -15,14 +15,14 @@ function getConfigDir() {
     let configDir;
     
     if (platform === 'win32') {
-        // Windows: %APPDATA%\cheating-daddy-config
-        configDir = path.join(os.homedir(), 'AppData', 'Roaming', 'cheating-daddy-config');
+        // Windows: %APPDATA%\meharnolan-config
+        configDir = path.join(os.homedir(), 'AppData', 'Roaming', 'meharnolan-config');
     } else if (platform === 'darwin') {
-        // macOS: ~/Library/Application Support/cheating-daddy-config
-        configDir = path.join(os.homedir(), 'Library', 'Application Support', 'cheating-daddy-config');
+        // macOS: ~/Library/Application Support/meharnolan-config
+        configDir = path.join(os.homedir(), 'Library', 'Application Support', 'meharnolan-config');
     } else {
-        // Linux and others: ~/.config/cheating-daddy-config
-        configDir = path.join(os.homedir(), '.config', 'cheating-daddy-config');
+        // Linux and others: ~/.config/meharnolan-config
+        configDir = path.join(os.homedir(), '.config', 'meharnolan-config');
     }
     
     return configDir;
