@@ -194,6 +194,85 @@ export class MainView extends LitElement {
             margin-top: 8px;
             line-height: 1.4;
         }
+
+        .profile-selector {
+            margin-bottom: 16px;
+        }
+
+        .profile-selector label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--label-color);
+            margin-bottom: 6px;
+        }
+
+        .profile-selector select {
+            width: 100%;
+            background: var(--input-background);
+            color: var(--text-color);
+            border: 1px solid var(--button-border);
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 10px center;
+            background-repeat: no-repeat;
+            background-size: 16px;
+            padding-right: 36px;
+        }
+
+        .profile-selector select:focus {
+            outline: none;
+            border-color: var(--focus-border-color);
+            box-shadow: 0 0 0 3px var(--focus-box-shadow);
+        }
+
+        .custom-instructions {
+            margin-bottom: 16px;
+        }
+
+        .custom-instructions label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--label-color);
+            margin-bottom: 6px;
+        }
+
+        .custom-instructions textarea {
+            width: 100%;
+            min-height: 80px;
+            background: var(--input-background);
+            color: var(--text-color);
+            border: 1px solid var(--button-border);
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.2s ease;
+        }
+
+        .custom-instructions textarea:focus {
+            outline: none;
+            border-color: var(--focus-border-color);
+            box-shadow: 0 0 0 3px var(--focus-box-shadow);
+            background: var(--input-focus-background);
+        }
+
+        .custom-instructions textarea::placeholder {
+            color: var(--placeholder-color);
+        }
+
+        .field-description {
+            font-size: 11px;
+            color: var(--description-color);
+            margin-top: 4px;
+            line-height: 1.4;
+        }
     `;
 
     static properties = {
@@ -203,6 +282,8 @@ export class MainView extends LitElement {
         onLayoutModeChange: { type: Function },
         showApiKeyError: { type: Boolean },
         selectedProvider: { type: String },
+        selectedProfile: { type: String },
+        customInstructions: { type: String },
     };
 
     constructor() {
@@ -213,6 +294,8 @@ export class MainView extends LitElement {
         this.onLayoutModeChange = () => {};
         this.showApiKeyError = false;
         this.selectedProvider = localStorage.getItem('llmProvider') || 'gemini';
+        this.selectedProfile = localStorage.getItem('selectedProfile') || 'interview';
+        this.customInstructions = localStorage.getItem('customPrompt') || '';
         this.boundKeydownHandler = this.handleKeydown.bind(this);
     }
 
@@ -260,6 +343,17 @@ export class MainView extends LitElement {
         this.selectedProvider = e.target.value;
         localStorage.setItem('llmProvider', this.selectedProvider);
         this.requestUpdate();
+    }
+
+    handleProfileChange(e) {
+        this.selectedProfile = e.target.value;
+        localStorage.setItem('selectedProfile', this.selectedProfile);
+        this.requestUpdate();
+    }
+
+    handleCustomInstructionsInput(e) {
+        this.customInstructions = e.target.value;
+        localStorage.setItem('customPrompt', this.customInstructions);
     }
 
     getProviderInfo() {
@@ -365,11 +459,12 @@ export class MainView extends LitElement {
 
     render() {
         const providerInfo = this.getProviderInfo();
-        const apiKeyPlaceholder = this.selectedProvider === 'gemini' 
-            ? 'Enter your Gemini API Key'
-            : this.selectedProvider === 'groq'
-            ? 'Enter your Groq API Key'
-            : 'Enter your OpenRouter API Key';
+        const apiKeyPlaceholder =
+            this.selectedProvider === 'gemini'
+                ? 'Enter your Gemini API Key'
+                : this.selectedProvider === 'groq'
+                ? 'Enter your Groq API Key'
+                : 'Enter your OpenRouter API Key';
 
         return html`
             <div class="welcome">Welcome</div>
@@ -401,6 +496,29 @@ export class MainView extends LitElement {
                 dont have an api key?
                 <span @click=${this.handleAPIKeyHelpClick} class="link">get one here</span>
             </p>
+
+            <div class="profile-selector">
+                <label>Profile Type</label>
+                <select .value=${this.selectedProfile} @change=${this.handleProfileChange}>
+                    <option value="interview">Interview Assistant</option>
+                    <option value="meeting">Meeting Assistant</option>
+                    <option value="firstday">First Day at Work</option>
+                    <option value="presentation">Presentation Helper</option>
+                    <option value="learning">Learning Companion</option>
+                    <option value="custom">Custom Profile</option>
+                </select>
+                <div class="field-description">Choose the AI behavior that best fits your use case</div>
+            </div>
+
+            <div class="custom-instructions">
+                <label>Custom AI Instructions</label>
+                <textarea
+                    placeholder="Add context like your resume, job description, or specific instructions for the AI..."
+                    .value=${this.customInstructions}
+                    @input=${this.handleCustomInstructionsInput}
+                ></textarea>
+                <div class="field-description">Provide additional context to personalize AI responses</div>
+            </div>
         `;
     }
 }
